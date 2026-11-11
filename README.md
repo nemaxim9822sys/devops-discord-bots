@@ -161,7 +161,7 @@ End-to-end Discord integration has not yet been tested because
 test credentials for Discord, Google and OpenAI are not configured.
 
 The GitHub Actions workflow was validated with actionlint;
-a successful GitHub-hosted workflow run has not yet been verified.
+Both GitHub-hosted workflows (Docker Build CI and Security Scan) completed successfully.
 
 ---
 
@@ -430,5 +430,5 @@ The following functionality was verified in the local demonstration environment:
 
 - Discord bots were not tested end-to-end with real API credentials.
 - Application Docker images were built and imported locally rather than pulled from a container registry.
-- GitHub Actions workflows were validated locally with actionlint, but successful GitHub-hosted runs have not yet been verified.
+- GitHub Actions workflows were validated locally with actionlint and both completed successfully on GitHub.
 - The deployment was tested on a single-node k3s cluster, not a multi-node production environment.
