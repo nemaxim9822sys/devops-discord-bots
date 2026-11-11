@@ -41,7 +41,18 @@ cp discord-transcriber/.env.example discord-transcriber/.env
 cp discord-transcriber/.env.recorders.example discord-transcriber/.env.recorders
 ```
 
-### 2. Launch Services
+### 2. Configure PostgreSQL Password
+
+Before starting Docker Compose, create a root `.env` file with `DB_PASSWORD`:
+
+```bash
+printf "DB_PASSWORD=%s\n" "$(openssl rand -hex 24)" > .env
+```
+
+Keep this file private. It is ignored by Git.
+
+
+### 3. Launch Services
 
 ```bash
 # Start PostgreSQL database, tracker bot, and transcriber bot
@@ -82,3 +93,49 @@ npm start
 - Keep `.env` and `google-service-account.json` in `.gitignore`.
 - Rotate API keys and bot tokens regularly.
 - Ensure bots have appropriate Discord Gateway Intents enabled (`GuildPresences`, `GuildVoiceStates`, `MessageContent`).
+
+---
+
+## DevOps Improvements
+
+This repository includes the following infrastructure improvements:
+
+### Containerization
+- Docker Compose configuration for PostgreSQL 17 and two Node.js services.
+- Persistent PostgreSQL storage using a Docker volume.
+- PostgreSQL health check.
+- Database port bound to localhost.
+
+### Docker Image Optimization
+The transcriber image was optimized using a multi-stage Dockerfile.
+
+| Metric | Original | Optimized |
+|--------|----------|-----------|
+| Image size | 1.7 GB | 1.15 GB |
+
+**Result:** approximately 550 MB (32.4%) smaller image.
+
+Build tools are installed in the builder stage, while the runtime stage
+contains Node.js, FFmpeg, application code, and production dependencies.
+
+The optimized image was smoke-tested for:
+- Node.js availability.
+- FFmpeg availability.
+- Installed Node.js dependencies.
+- Native GNU module library dependencies.
+
+Full application testing requires valid Discord and API credentials.
+
+### Continuous Integration
+GitHub Actions workflow: `.github/workflows/docker-build.yml`
+
+- Builds both Docker images on push and pull request.
+- Uses Docker Buildx.
+- Uses GitHub Actions layer caching.
+- Does not publish images.
+- Workflow configuration validated with actionlint.
+
+### Local Verification
+- PostgreSQL container started successfully and passed its health check.
+- PostgreSQL version verified: 17.11.
+- Both application Docker images built successfully.
