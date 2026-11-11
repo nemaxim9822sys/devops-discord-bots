@@ -139,3 +139,26 @@ GitHub Actions workflow: `.github/workflows/docker-build.yml`
 - PostgreSQL container started successfully and passed its health check.
 - PostgreSQL version verified: 17.11.
 - Both application Docker images built successfully.
+
+## Infrastructure Verification
+
+The following checks were completed on Ubuntu 24.04:
+
+| Component | Verified result |
+|---|---|
+| Docker Compose | Configuration validation passed |
+| PostgreSQL 17 | Container running, healthcheck healthy |
+| Database networking | Bound to 127.0.0.1:5432 |
+| Tracker image | Built successfully; Node.js 20.20.2 |
+| Transcriber image | Built successfully; Node.js 20.20.2 |
+| FFmpeg | Version 5.1.9 available in transcriber |
+| Image optimization | Reduced from 1.7 GB to 1.15 GB (~32.4%) |
+
+### Verification Scope
+
+Docker image builds and runtime dependency checks passed.
+End-to-end Discord integration has not yet been tested because
+test credentials for Discord, Google and OpenAI are not configured.
+
+The GitHub Actions workflow was validated with actionlint;
+a successful GitHub-hosted workflow run has not yet been verified.
