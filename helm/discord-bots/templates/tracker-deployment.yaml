@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracker-bot
+spec:
+  replicas: {{ .Values.trackerBot.replicas }}
+  selector:
+    matchLabels:
+      app: tracker-bot
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: tracker-bot
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: tracker-bot
+          image: "{{ .Values.trackerBot.image.repository }}:{{ .Values.trackerBot.image.tag }}"
+          imagePullPolicy: {{ .Values.trackerBot.image.pullPolicy }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.trackerBot.existingSecret }}
+          env:
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: {{ .Values.postgres.database | quote }}
+            - name: DB_USER
+              value: {{ .Values.postgres.username | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.existingSecret }}
+                  key: password
+            - name: GOOGLE_SERVICE_ACCOUNT_FILE
+              value: /app/google-service-account.json
+          volumeMounts:
+            - name: google-credentials
+              mountPath: /app/google-service-account.json
+              subPath: google-service-account.json
+              readOnly: true
+      volumes:
+        - name: google-credentials
+          secret:
+            secretName: {{ .Values.trackerBot.googleCredentialsSecret }}

@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transcriber-bot
+spec:
+  replicas: {{ .Values.transcriberBot.replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: transcriber-bot
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: transcriber-bot
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: transcriber-bot
+          image: "{{ .Values.transcriberBot.image.repository }}:{{ .Values.transcriberBot.image.tag }}"
+          imagePullPolicy: {{ .Values.transcriberBot.image.pullPolicy }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.transcriberBot.existingSecret }}
+          volumeMounts:
+            - name: recorders-config
+              mountPath: /app/.env.recorders
+              subPath: .env.recorders
+              readOnly: true
+            - name: meeting-data
+              mountPath: /app/meeting-data
+      volumes:
+        - name: recorders-config
+          secret:
+            secretName: {{ .Values.transcriberBot.recordersSecret }}
+        - name: meeting-data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-transcriber-data

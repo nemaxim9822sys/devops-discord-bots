@@ -1,0 +1,29 @@
+postgres:
+  image:
+    repository: postgres
+    tag: "17-alpine"
+  database: discord_bot
+  username: discord_bot
+  existingSecret: discord-postgres-secret
+  storage:
+    size: 5Gi
+
+trackerBot:
+  replicas: 1
+  image:
+    repository: 1109-tracker-bot
+    tag: latest
+    pullPolicy: Never
+  existingSecret: discord-tracker-secret
+  googleCredentialsSecret: discord-google-credentials
+
+transcriberBot:
+  replicas: 1
+  image:
+    repository: 1109-transcriber-bot
+    tag: latest
+    pullPolicy: Never
+  existingSecret: discord-transcriber-secret
+  recordersSecret: discord-recorders-secret
+  storage:
+    size: 5Gi
