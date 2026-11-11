@@ -1,0 +1,11 @@
+title = "Discord DevOps Project - Secret Scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Known placeholder in initial Google service account example"
+commits = ["532360ea82621242be806fcfc8c383a9df7bfb42"]
+paths = ['''^discord-bot/google-service-account\.example\.json$''']
+regexTarget = "match"
+regexes = ['''-----BEGIN PRIVATE KEY-----''']

@@ -1,0 +1,28 @@
+name: Security Scan
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gitleaks:
+    name: Scan Git history for secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo:ro" \
+            zricethezav/gitleaks:latest \
+            git /repo \
+            --config /repo/.gitleaks.toml \
+            --redact \
+            --no-banner \
+            --exit-code 1
