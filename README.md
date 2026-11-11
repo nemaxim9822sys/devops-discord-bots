@@ -162,3 +162,273 @@ test credentials for Discord, Google and OpenAI are not configured.
 
 The GitHub Actions workflow was validated with actionlint;
 a successful GitHub-hosted workflow run has not yet been verified.
+
+---
+
+## Kubernetes Deployment (k3s + Helm)
+
+The project includes a Helm chart in `helm/discord-bots/`.
+
+Tested environment:
+- Ubuntu 24.04
+- Single-node k3s cluster
+- Helm 3
+- PostgreSQL 17
+
+The Helm chart deploys PostgreSQL with persistent storage
+and defines Deployments for both Discord bots.
+
+In the demonstration environment, PostgreSQL is running
+and the database schema has been verified.
+
+Both bots are intentionally configured with `replicas: 0`
+because real API credentials are not provided.
+
+Full application integration testing requires valid credentials.
+
+## Monitoring and Centralized Logging
+
+The Kubernetes observability stack includes:
+
+- Prometheus: collects Kubernetes and Linux node metrics.
+- Grafana: provides infrastructure dashboards.
+- kube-state-metrics: exposes Kubernetes resource metrics.
+- node-exporter: exposes Linux host metrics.
+- Grafana Alloy: collects Kubernetes pod logs.
+- Loki: stores and queries collected logs.
+
+Configuration files:
+- `monitoring/values.yaml` - Prometheus and Grafana.
+- `monitoring/loki-values.yaml` - Loki.
+- `monitoring/alloy-values.yaml` - Alloy.
+
+Verified results:
+- Prometheus, Grafana, Loki and Alloy pods are running.
+- Kubernetes and Linux node metrics are visible in Grafana.
+- PostgreSQL logs are available through Grafana Explore.
+- Persistent volumes are bound.
+
+Example LogQL query: `{namespace="discord-bots"}`
+
+Both application bots remain scaled to zero until valid
+credentials are supplied and integration tests are completed.
+
+---
+
+## Kubernetes Deployment Guide
+
+This project was tested on Ubuntu 24.04 using a single-node k3s cluster and Helm 3.
+
+### Architecture
+
+- Docker builds the application images.
+- Kubernetes (k3s) orchestrates the containers.
+- Helm manages application deployments.
+- PostgreSQL 17 runs as a StatefulSet with persistent storage.
+- Prometheus collects infrastructure metrics.
+- Grafana visualizes metrics and logs.
+- Grafana Alloy collects Kubernetes pod logs.
+- Loki stores and queries logs.
+
+### Prerequisites
+
+Install and configure:
+
+- Docker Engine
+- k3s
+- kubectl
+- Helm 3
+- Git
+
+Clone the repository and navigate to the project directory.
+
+### Build Application Images
+
+```bash
+docker compose build
+```
+
+The Helm chart uses these local image names:
+
+- `1109-tracker-bot:latest`
+- `1109-transcriber-bot:latest`
+
+Import both images into k3s containerd:
+
+```bash
+docker save 1109-tracker-bot:latest | sudo k3s ctr images import -
+docker save 1109-transcriber-bot:latest | sudo k3s ctr images import -
+```
+
+### Create Kubernetes Namespace
+
+```bash
+kubectl create namespace discord-bots
+```
+
+If the namespace already exists, this command can be skipped.
+
+### Configure PostgreSQL Secret
+
+The PostgreSQL chart expects a Secret named `discord-postgres-secret`.
+
+Generate a password locally and create the Secret:
+
+```bash
+DB_PASSWORD="$(openssl rand -hex 24)"
+
+kubectl create secret generic discord-postgres-secret \
+  --namespace discord-bots \
+  --from-literal=POSTGRES_PASSWORD="$DB_PASSWORD"
+
+unset DB_PASSWORD
+```
+
+Never commit passwords, tokens or Kubernetes Secret manifests containing real credentials.
+
+### Deploy PostgreSQL and Application Resources
+
+Install the Helm chart:
+
+```bash
+helm upgrade --install discord ./helm/discord-bots \
+  --namespace discord-bots \
+  --set trackerBot.replicas=0 \
+  --set transcriberBot.replicas=0
+```
+
+The bots are intentionally disabled in this demonstration because valid Discord, Google and OpenAI credentials are not included.
+
+PostgreSQL remains enabled.
+
+Verify the deployment:
+
+```bash
+kubectl get pods -n discord-bots
+kubectl get pvc -n discord-bots
+helm list -n discord-bots
+```
+
+Expected result: PostgreSQL is running, its persistent volume is bound, and the bot Deployments have zero replicas.
+
+### Install Prometheus and Grafana
+
+Add the Helm repository:
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+```
+
+Create the monitoring namespace:
+
+```bash
+kubectl create namespace monitoring
+```
+
+Install the monitoring stack:
+
+```bash
+helm upgrade --install monitoring \
+  prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  -f monitoring/values.yaml
+```
+
+### Install Loki and Grafana Alloy
+
+Add the Grafana Helm repository:
+
+```bash
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+```
+
+Install Loki:
+
+```bash
+helm upgrade --install loki grafana/loki \
+  --namespace monitoring \
+  -f monitoring/loki-values.yaml
+```
+
+Install Alloy:
+
+```bash
+helm upgrade --install alloy grafana/alloy \
+  --namespace monitoring \
+  -f monitoring/alloy-values.yaml
+```
+
+### Verify Monitoring
+
+```bash
+kubectl get pods -n monitoring
+kubectl get pvc -n monitoring
+helm list -A
+```
+
+All monitoring components should reach the Running state.
+
+### Access Grafana
+
+Forward the Grafana service to localhost:
+
+```bash
+kubectl port-forward -n monitoring \
+  svc/monitoring-grafana 3000:80
+```
+
+Open:
+
+http://localhost:3000
+
+If Kubernetes runs on a remote VM, use an SSH tunnel to access this port securely.
+
+Grafana administrator credentials are stored in the Kubernetes Secret created by the monitoring Helm chart.
+
+### Configure Loki Data Source
+
+In Grafana, add a Loki data source with this URL:
+
+```text
+http://loki.monitoring.svc.cluster.local:3100
+```
+
+Use Save & test to verify the connection.
+
+Open Grafana Explore and run:
+
+```logql
+{namespace="monitoring"}
+```
+
+To view PostgreSQL logs:
+
+```logql
+{namespace="discord-bots"}
+```
+
+Select an appropriate time range, such as Last 24 hours, if no recent logs are visible.
+
+### Verification Results
+
+The following functionality was verified in the local demonstration environment:
+
+- k3s node reached Ready state.
+- Helm deployment completed successfully.
+- PostgreSQL StatefulSet reached Running state.
+- PostgreSQL database tables and indexes were verified.
+- Kubernetes persistent volumes were bound.
+- Prometheus collected Kubernetes and Linux node metrics.
+- Grafana displayed infrastructure dashboards.
+- Alloy collected Kubernetes pod logs.
+- Loki returned logs through Grafana Explore.
+- Gitleaks found no secrets in the checked Helm and monitoring configuration files.
+
+### Known Limitations
+
+- Discord bots were not tested end-to-end with real API credentials.
+- Application Docker images were built and imported locally rather than pulled from a container registry.
+- GitHub Actions workflows were validated locally with actionlint, but successful GitHub-hosted runs have not yet been verified.
+- The deployment was tested on a single-node k3s cluster, not a multi-node production environment.
