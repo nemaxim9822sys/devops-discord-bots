@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment and Credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.json
+!package*.json
+!google-service-account.example.json
+
+# Audio and temporary storage
+audio-pending/
+meeting-data/
+*.log
+*.bak
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.backup
+
+# Backup files
+*.backup
